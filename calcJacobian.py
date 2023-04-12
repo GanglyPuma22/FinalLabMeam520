@@ -1,5 +1,5 @@
 import numpy as np
-from lib.calculateFK import FK
+from calculateFK import FK
     
 def calcJacobian(q_in, jointIndex):
     """

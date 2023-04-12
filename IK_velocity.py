@@ -1,5 +1,5 @@
 import numpy as np 
-from lib.calcJacobian import calcJacobian
+from calcJacobian import calcJacobian
 
 
 
@@ -19,7 +19,7 @@ def IK_velocity(q_in, v_in, omega_in):
 
     ## STUDENT CODE GOES HERE
     desiredV = np.transpose(np.hstack((v_in, omega_in)))
-    J = calcJacobian(q_in)
+    J = calcJacobian(q_in, 7)
     desiredV = np.concatenate((v_in, omega_in))
     
     #Unconstrain nan velocities
