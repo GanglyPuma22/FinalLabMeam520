@@ -67,14 +67,17 @@ if __name__ == "__main__":
         #Rotation matrix of block in camera frame
         TcB = detector.get_detections()[0][1]
         print(TcB)
+        # block in end-effector frame
+        T0B_2 = TcB @ H_ee_camera @ T0e
+        print('T0B_2: ' + str(T0B_2))
         #Turn it into world frame coordinates
-        T0B = T0c @ TcB
-        print(T0B)
+        T0B = T0e @ TcB
+        print('T0B: ' + str(T0B))
         #Add 10 cm to the blocks z pose to define target pose for end effector
         T0B[2,3] = T0B[2,3] + 0.1
 
         #Use IK to get joint angles we need to move the robot above the block
-        blockHoverConfig = ik.inverse(T0B, view_block_position)
+        blockHoverConfig = ik.inverse(T0B_2, view_block_position)
         print(blockHoverConfig)
         arm.safe_move_to_position(blockHoverConfig)
 
