@@ -2,8 +2,11 @@ import sys
 import numpy as np
 from copy import deepcopy
 from math import pi
-from solveIK import IK 
-from calculateFK import FK
+from lib.solveIK import IK 
+from lib.calculateFK import FK
+from lib.calcJacobian import calcJacobian
+from robot import Robot
+from vision import *
 import rospy
 # Common interfaces for interacting with both the simulation and real environments!
 from core.interfaces import ArmController
@@ -38,66 +41,25 @@ if __name__ == "__main__":
 
     # STUDENT CODE HERE
 
-    #Predifined position where we can see the blocks 
-    view_block_position = np.array([-0.01779206, -0.76012354,  0.01978261, -2.34205014, 0.02984053, 1.54119353 + pi/5, 0.75344866])
-    #Move from start to see the blocks
-    arm.safe_move_to_position(view_block_position)
-
-    # get the transform from camera to panda_end_effector
-    H_ee_camera = detector.get_H_ee_camera()
-    print(H_ee_camera)
-    print(detector.get_detections())
-
-    # Detect some blocks...
-    for (name, pose) in detector.get_detections():
-         print(name,'\n',pose)
-    
-    #Get transform from camera to worldframe and offset it to end effector
+    robot = Robot()
     fk = FK()
     ik = IK()
 
-    jointPos, T0e = fk.forward(start_position)
+    # predifined position where we can see the blocks 
 
-    #Camera frame expressed in world coordinates
-    print(T0e)
-    T0c = T0e @ H_ee_camera #This seems right compared to end effector pose
-    print(T0c)
+    view_block_position = np.array([0,0,0,-pi/2,0,pi/2,pi/4])
+    robot.safe_move_to_position(view_block_position)
 
-    if len(detector.get_detections()) > 0:
-        #Rotation matrix of block in camera frame
-        TcB = detector.get_detections()[0][1]
-        print(TcB)
-        # block in end-effector frame
-        T0B_2 = TcB @ H_ee_camera @ T0e
-        print('T0B_2: ' + str(T0B_2))
-        #Turn it into world frame coordinates
-        T0B = T0e @ TcB
-        print('T0B: ' + str(T0B))
-        #Add 10 cm to the blocks z pose to define target pose for end effector
-        T0B[2,3] = T0B[2,3] + 0.1
-
-        #Use IK to get joint angles we need to move the robot above the block
-        blockHoverConfig = ik.inverse(T0B_2, view_block_position)
-        print(blockHoverConfig)
-        arm.safe_move_to_position(blockHoverConfig)
-
-
-
-
+    # locating blocks in world frame
+    _, T0e = fk.forward(robot.get_positions())
+    H_w_cam = H_w_cam(T0e, detector.get_H_ee_camera())
+    poses = []
+    for (block_name, pose) in detector.get_detections():
+        poses.append(pose)
+    poses = objects_in_world(poses, H_w_cam)
     
-
-    #We now have the position and orientation of the target blocks center.
-    #Use IK to get a goal position that is above the block by 10cm 
-
-    #Path planning to goal
-    #Iterate over path and safe move to each config
-    
-    #Orient the end effector to be parallele with block
-
-    #Go down 10 cm in a straight line -> Look at line task from previous lab
-
-    #close gripper 
-    
-    # go up to safe position
+    # moving above each block
+    for H in poses:
+        robot.move_above_block(H)
 
     # END STUDENT CODE
