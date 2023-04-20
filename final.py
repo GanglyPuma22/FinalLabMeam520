@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     # STUDENT CODE HERE
 
-    robot = Robot()
+    robot = Robot(team)
     fk = FK()
     ik = IK()
 
@@ -58,8 +58,10 @@ if __name__ == "__main__":
         poses.append(pose)
     poses = objects_in_world(poses, H_w_cam)
     
-    # moving above each block
+    # stacking each static block
     for H in poses:
         robot.move_above_block(H)
+        robot.get_static_block()
+        robot.stack_static_block()
 
     # END STUDENT CODE
