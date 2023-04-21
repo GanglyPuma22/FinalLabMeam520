@@ -1,7 +1,7 @@
 import numpy as np
 from calculateFK import FK
     
-def calcJacobian(q_in, jointIndex):
+def calcJacobian(q_in, jointIndex=7):
     """
     Calculate the full Jacobian of the end effector in a given configuration
     :param q_in: 1 x 7 configuration vector (of joint angles) [q1,q2,q3,q4,q5,q6,q7]

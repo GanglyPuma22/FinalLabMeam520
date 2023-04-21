@@ -121,6 +121,34 @@ class Robot(ArmController):
         self.num_blocks_stacked += 1
         self.safe_move_to_position(q_above)
 
+    def get_dynamic_block(self):
+        #Seed where camera is pointing down y axis of world and end effector is just above and at the edge of dynamic table
+        dynamic_seed = [ 0.75395863,  0.65412359,  0.69980793, -1.9420197,   1.78589341,  2.27965587, 1.19368807]
+        #dynamic_seed_side= np.array([ 0.86509697, 0.9800777, 0.57962444, -1.3424143, 0.98768188, 1.5608464, 1.77350871])
+
+        ee_Z = 0.22
+        ee_X = 0
+        ee_Y = 0.748
+        sideTarget = np.array([[0, 0, -1, ee_X], [0, -1, 0, ee_Y], [-1, 0, 0, ee_Z], [0, 0, 0, 1]])
+        targetCameraFront = np.array([[0, 1, 0, ee_X], [0, 0, 1, ee_Y - 0.05], [1, 0, 0, ee_Z], [0, 0, 0, 1]])
+        print(targetCameraFront)
+
+        #Solve for path that gets us to camera front position
+        q_out, success, _ = self.ik.inverse(targetCameraFront, dynamic_seed)
+        print(q_out)
+
+        #if (success):
+        print("Moving to start dynamic block task position")
+        self.safe_move_to_position(q_out)
+        gripper_status = self.exec_gripper_cmd(.09, 50)
+        if gripper_status: print("Opening gripper...")
+        blockTarget = np.array([[0, 1, 0, ee_X], [0, 0, 1, 0.75], [1, 0, 0, ee_Z], [0, 0, 0, 1]])
+        q_out, success, _ = self.ik.inverse(blockTarget, q_out)
+        self.safe_move_to_position(q_out)
+        print("Moving to intercept block")
+        gripper_status = self.exec_gripper_cmd(.01, 50)
+        if gripper_status: print("Closing gripper...")
+
 
 
 

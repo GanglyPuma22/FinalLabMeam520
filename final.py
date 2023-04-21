@@ -46,7 +46,6 @@ if __name__ == "__main__":
     ik = IK()
 
     # predifined position where we can see the blocks 
-
     view_block_position = np.array([0,0,0,-pi/2,0,pi/2,pi/4])
     robot.safe_move_to_position(view_block_position)
 

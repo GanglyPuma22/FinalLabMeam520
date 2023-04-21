@@ -3,9 +3,9 @@ from math import pi, acos, sin, cos
 from scipy.linalg import null_space
 from numpy import linalg
 
-from lib.calcJacobian import calcJacobian
-from lib.calculateFK import FK
-from lib.IK_velocity import IK_velocity
+from calcJacobian import calcJacobian
+from calculateFK import FK
+from IK_velocity import IK_velocity
 
 
 class IK:
