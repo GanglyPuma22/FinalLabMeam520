@@ -2,9 +2,9 @@ import sys
 import numpy as np
 from copy import deepcopy
 from math import pi
-from lib.solveIK import IK 
-from lib.calculateFK import FK
-from lib.calcJacobian import calcJacobian
+from solveIK import IK 
+from calculateFK import FK
+from calcJacobian import calcJacobian
 from robot import Robot
 from vision import *
 import rospy
