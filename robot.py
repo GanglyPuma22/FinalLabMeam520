@@ -5,6 +5,7 @@ import numpy as np
 from math import sin, pi, cos
 from calculateFK import FK
 from solveIK import IK
+from follow import JacobianDemo
 
 
 class Robot(ArmController):
@@ -18,11 +19,13 @@ class Robot(ArmController):
     above_height = .1
     num_blocks_stacked = 0
     
-    def __init__(self, team):
+    def __init__(self, team, callback):
         super().__init__()
         self.fk = FK()
         self.ik = IK()
         self.team = team
+        self.detector = ObjectDetector()
+        self.JD = JacobianDemo()
         pass
 
     @staticmethod
@@ -45,15 +48,13 @@ class Robot(ArmController):
         seed = self.best_seed(H_w_block[:3, -1])
         target = H_w_block
 
-        # TODO: align axes properly and set the goal height above the block
         goal_orientation = self.fk.forward(self.get_positions())[1][:3, :3]
         target[:3, :3] = goal_orientation
 
+        #TODO: Align axes in x-y, look at get angle function
+
         # going above target block by some above_height
         target[2, 3] = target[2, 3] + self.above_height
-        
-
-        # TODO: plan a path from q_curr to q_out and execute that path
 
         q_out, success, _ = self.ik.inverse(target, seed)
 
@@ -61,6 +62,40 @@ class Robot(ArmController):
             self.safe_move_to_position(q_out)
             print("Moving to above block")
         else: print("Solution to above block not found")
+    
+    def control_joint_vel(self):
+        """
+        Calls jacobian demo class on arm controller super class to use arm.safe_set_joint_positions_velocities
+        """
+        #TODO: Fix line trajectory function in follow.py
+        state = self.get_state()
+        self.JD.activate()
+        print("STATE IS:")
+        print(state)
+        self.JD.line_trajectory(state, super())
+
+
+    def get_angle(self, goal, block):
+         
+        """
+        Function tries two ways of computign angle in xy plane between end effector and block
+        :param goal: 4x4 transformation of end effector goal in world frame
+        :param block: 4x4 transfromation of block in world frame
+        """
+        endEffectorX = np.transpose(goal[:3,0])
+        blockX = np.transpose(block[:3, 0])
+
+        #Dot product formula for angle
+        angle = np.arccos(np.dot(endEffectorX, blockX)/ 
+                          (np.linalg.norm(endEffectorX) * np.linalg.norm(blockX)))
+        
+        distance, angle = self.ik.distance_and_angle(goal, block)
+
+        #Change target so x and y axes between end effector and block are aligned
+        goal[:3, 0] = np.transpose(np.array([np.cos(angle), np.sin(angle), 0]))
+        goal[:3, 1] = np.transpose(np.array([-np.sin(angle), np.cos(angle), 0]))
+
+        return angle, goal
 
     def get_static_block(self):
 
@@ -72,6 +107,7 @@ class Robot(ArmController):
         seed = self.best_seed(target[:3, -1])
 
         # opening gripper then move down
+        #TODO: Change moving down to line trajectory
         self.open_gripper()
         q_down, success, _ = self.ik.inverse(target, seed)
         if success:
@@ -80,6 +116,7 @@ class Robot(ArmController):
         else: print("Solution to grab block not found...")
 
         # closing the gripper then moving up
+        #TODO: Change moving up to line trajectory
         gripper_status = self.exec_gripper_cmd(.05, 50)
         if gripper_status: print("Closing gripper...")
         if success:
@@ -111,6 +148,7 @@ class Robot(ArmController):
         # moving down to stack
         q_stack, success, _ = self.ik.inverse(target, self.get_positions())
         if success:
+            #TODO: Replace move down with line trajectory
             self.safe_move_to_position(q_stack)
             print("Moving to stack...")
         else: print('Cannot find path to stack...')
@@ -119,6 +157,7 @@ class Robot(ArmController):
         success = self.open_gripper()
         if success: print("Dropping block...")
         self.num_blocks_stacked += 1
+        #TODO: Replace move up with line trajectory
         self.safe_move_to_position(q_above)
 
     def get_dynamic_block(self):

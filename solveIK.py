@@ -16,7 +16,7 @@ class IK:
     center = lower + (upper - lower) / 2  # compute middle of range of motion of each joint
     fk = FK()
 
-    def __init__(self, linear_tol=1e-4, angular_tol=1e-3, max_steps=500, min_step_size=1e-5):
+    def __init__(self, linear_tol=1e-3, angular_tol=5e-3, max_steps=500, min_step_size=1e-5):
         """
         Constructs an optimization-based IK solver with given solver parameters.
         Default parameters are tuned to reasonable values.
