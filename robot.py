@@ -19,7 +19,7 @@ class Robot(ArmController):
     above_height = .1
     num_blocks_stacked = 0
     
-    def __init__(self, team, callback):
+    def __init__(self, team):
         super().__init__()
         self.fk = FK()
         self.ik = IK()

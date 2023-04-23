@@ -40,11 +40,8 @@ if __name__ == "__main__":
     print("Go!\n") # go!
 
     # STUDENT CODE HERE
-    def callback(state):
-        print("STATE FOUND")
-        print(state)
 
-    robot = Robot(team, callback)
+    robot = Robot(team)
     fk = FK()
     ik = IK()
 
