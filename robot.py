@@ -41,6 +41,34 @@ class Robot(ArmController):
 
         return seeds[0]
     
+    @staticmethod
+    def orient_to_static(H_w_block):
+        """
+        :param H_w_block: [4x4] location transformation of static block in world frame
+        :returns the necessary end effector orientation to grab the block
+        """
+        
+        ee_x = np.array([1, 0, 0])
+
+        # removing axis that points up
+        H = H_w_block[:3, :3]
+        col_mask = np.round(H[-1], 4) != 1
+        H = (H.T[col_mask]).T
+
+        # getting the dot product between each block axis and the ee_x
+        dots = np.dot(H.T, ee_x)
+        best_idx = np.argmax(np.abs(dots))
+        other_idx = np.argmin(np.abs(dots))
+
+        # getting the columns of the target
+        block_x = np.abs(H[:, best_idx])
+        block_y = -np.abs(H[:, other_idx])
+        target = np.hstack([block_x, block_y, np.array([[0], [0], [-1]])])
+
+        print('block: ', H)
+        print('target: ', target)
+        return target
+    
     def move_above_block(self, H_w_block):
         """
         :param H_w_block: 4x4 transformation of block in world frame
@@ -48,8 +76,9 @@ class Robot(ArmController):
         seed = self.best_seed(H_w_block[:3, -1])
         target = H_w_block
 
-        goal_orientation = self.fk.forward(self.get_positions())[1][:3, :3]
-        target[:3, :3] = goal_orientation
+        target[:3, :3] = np.array([[1, 0, 0,],
+                            [0, -1, 0],
+                            [0, 0, -1]])  # self.orient_to_static(H_w_block)
 
         #TODO: Align axes in x-y, look at get angle function
 
@@ -128,7 +157,7 @@ class Robot(ArmController):
         # setting the desired location to stack the next block
         x_stack = .59 
         y_stack = .23 if (self.team=='red') else -.23
-        z_stack = .225 + .05 * self.num_blocks_stacked
+        z_stack = .23 + .05 * self.num_blocks_stacked
         target = np.array([[1, 0, 0, x_stack],
                             [0, -1, 0, y_stack],
                             [0, 0, -1, z_stack],
