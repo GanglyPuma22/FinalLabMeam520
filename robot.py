@@ -55,18 +55,28 @@ class Robot(ArmController):
         col_mask = np.round(H[-1], 4) != 1
         H = (H.T[col_mask]).T
 
-        # getting the dot product between each block axis and the ee_x
-        dots = np.dot(H.T, ee_x)
-        best_idx = np.argmax(np.abs(dots))
-        other_idx = np.argmin(np.abs(dots))
+        try1 = np.cross(H[:, 0], H[:, 1])
+        tz = np.zeros(3)
+        tx = np.zeros(3)
+        ty = np.zeros(3)
+        
+        if (try1[-1] == -1):
+            ty = H[:, 0]
+            tx = H[:, 1]
+            tz = np.array([0, 0, -1])
+        else:
+            tx = H[:, 0]
+            ty = H[:, 1]
+            tz = np.array([0, 0, -1])
 
+        theta = np.arccos(tx[0])
+        # print(theta)
+ 
         # getting the columns of the target
-        block_x = np.abs(H[:, best_idx])
-        block_y = -np.abs(H[:, other_idx])
-        target = np.hstack([block_x, block_y, np.array([[0], [0], [-1]])])
+        target = np.vstack([tx, ty, tz]).T
 
-        print('block: ', H)
-        print('target: ', target)
+        # print('block: ', H)
+        # print('target: ', target)
         return target
     
     def move_above_block(self, H_w_block):
@@ -82,6 +92,15 @@ class Robot(ArmController):
 
         #TODO: Align axes in x-y, look at get angle function
 
+        seed = self.best_seed(H_w_block[:3, -1])
+        target = H_w_block
+        # np.array([[1, 0, 0,],
+        #                     [0, -1, 0],
+        #                     [0, 0, -1]])  
+        target[:3, :3] = self.orient_to_static(H_w_block)
+
+        #TODO: Align axes in x-y, look at get angle function
+
         # going above target block by some above_height
         target[2, 3] = target[2, 3] + self.above_height
 
@@ -91,6 +110,7 @@ class Robot(ArmController):
             self.safe_move_to_position(q_out)
             print("Moving to above block")
         else: print("Solution to above block not found")
+
     
     def control_joint_vel(self):
         """
