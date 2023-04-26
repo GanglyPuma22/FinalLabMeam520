@@ -22,9 +22,9 @@ def calcJacobian(q_in, jointIndex=7):
     currentRotation = np.identity(4)
     
     for i in range(1, 8):
-    	linkDistance = jointPositions[7,:] - jointPositions[i-1,:]
-    	Jv[:,i-1] = np.cross(rotations[:, :, i-1][:3,2], linkDistance)
-    	Jw[:,i-1] = rotations[:, :, i-1][:3,2]
+        linkDistance = jointPositions[7,:] - jointPositions[i-1,:]
+        Jv[:,i-1] = np.cross(rotations[:, :, i-1][:3,2], linkDistance)
+        Jw[:,i-1] = rotations[:, :, i-1][:3,2]
     
     J = np.concatenate((Jv, Jw))
     return J
