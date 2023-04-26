@@ -16,7 +16,7 @@ class IK:
     center = lower + (upper - lower) / 2  # compute middle of range of motion of each joint
     fk = FK()
 
-    def __init__(self, linear_tol=1e-3, angular_tol=5e-3, max_steps=500, min_step_size=1e-5):
+    def __init__(self, linear_tol=1e-3, angular_tol=5e-3, max_steps=10000, min_step_size=1e-5):
         """
         Constructs an optimization-based IK solver with given solver parameters.
         Default parameters are tuned to reasonable values.
@@ -140,9 +140,10 @@ class IK:
 
         ## STUDENT CODE STARTS HERE
         # check if the joint angles are within the joint limits
-        within_limits = all([self.lower[i] <= q[i] <= self.upper[i] for i in range(7)])
+        within_limits = [self.lower[i] <= q[i] <= self.upper[i] for i in range(7)]
 
-        if not within_limits:
+        if not all(within_limits):
+            print("NOT WITHIN JOINT LIMITS: ", within_limits)
             return False
 
         # end effector pose
@@ -156,7 +157,8 @@ class IK:
         # checking tolerances
         within_linear_tol = distance <= self.linear_tol
         within_angular_tol = abs(angle) <= self.angular_tol
-
+        if not within_angular_tol: print('NOT WITHIN ANGULAR TOL: ', angle)
+        if not within_linear_tol: print("NOT WITHIN LINEAR TOL: ", distance)
         success = within_limits and within_linear_tol and within_angular_tol
 
         ## END STUDENT CODE
