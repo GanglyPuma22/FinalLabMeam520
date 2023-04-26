@@ -42,18 +42,43 @@ class Robot(ArmController):
         return seeds[0]
     
     @staticmethod
+    def orient_to_static2(H_w_block):
+        # TODO: address edge cases of being outside of joint limits
+        R_w_ee = np.array([[1, 0, 0],
+                           [0, -1, 0],
+                           [0, 0, -1]])
+        R_w_block = H_w_block[:3, :3]
+        R_ee_block = R_w_block @ R_w_ee.T
+
+        col_mask = np.abs(np.round(R_ee_block[-1], 4)) != 1
+        H = (R_ee_block.T[col_mask]).T
+        ee_x = np.array([0, 1, 0])
+        dots = H.T @ ee_x
+        max_dot = np.argmax(dots)
+        tx = H[:, max_dot]
+        tz = np.array([0, 0, -1])
+        ty = np.cross(tz, tx)
+        target = np.vstack([tx, ty, tz]).T
+        theta = np.arccos(target[0][0])
+        print('Angle: ', theta)
+        print("target: ,", target)
+        return target
+
+
+    
+    @staticmethod
     def orient_to_static(H_w_block):
         """
         :param H_w_block: [4x4] location transformation of static block in world frame
         :returns the necessary end effector orientation to grab the block
         """
-        
         ee_x = np.array([1, 0, 0])
-
+        
         # removing axis that points up
-        H = H_w_block[:3, :3]
-        col_mask = np.round(H[-1], 4) != 1
+        H = np.copy(H_w_block[:3, :3])
+        col_mask = np.abs(np.round(H[-1], 4)) != 1
         H = (H.T[col_mask]).T
+        
 
         try1 = np.cross(H[:, 0], H[:, 1])
         tz = np.zeros(3)
@@ -61,22 +86,23 @@ class Robot(ArmController):
         ty = np.zeros(3)
         
         if (try1[-1] == -1):
-            ty = H[:, 0]
-            tx = H[:, 1]
-            tz = np.array([0, 0, -1])
-        else:
             tx = H[:, 0]
             ty = H[:, 1]
             tz = np.array([0, 0, -1])
+        else:
+            ty = H[:, 0]
+            tx = H[:, 1]
+            tz = np.array([0, 0, -1])
 
         theta = np.arccos(tx[0])
-        # print(theta)
+        print('COS', np.cos(theta))
+        print(theta)
  
         # getting the columns of the target
         target = np.vstack([tx, ty, tz]).T
 
-        # print('block: ', H)
-        # print('target: ', target)
+        print('block: ', H)
+        print('target: ', target)
         return target
     
     def move_above_block(self, H_w_block):
@@ -85,24 +111,10 @@ class Robot(ArmController):
         """
         seed = self.best_seed(H_w_block[:3, -1])
         target = H_w_block
-
-        target[:3, :3] = np.array([[1, 0, 0,],
-                            [0, -1, 0],
-                            [0, 0, -1]])  # self.orient_to_static(H_w_block)
-
-        #TODO: Align axes in x-y, look at get angle function
-
-        seed = self.best_seed(H_w_block[:3, -1])
-        target = H_w_block
-        # np.array([[1, 0, 0,],
-        #                     [0, -1, 0],
-        #                     [0, 0, -1]])  
-        target[:3, :3] = self.orient_to_static(H_w_block)
-
-        #TODO: Align axes in x-y, look at get angle function
+        target[:3, :3] = self.orient_to_static2(H_w_block)
 
         # going above target block by some above_height
-        target[2, 3] = target[2, 3] + self.above_height
+        target[2, 3] += self.above_height
 
         q_out, success, _ = self.ik.inverse(target, seed)
 
@@ -234,7 +246,7 @@ class Robot(ArmController):
         q_out, success, _ = self.ik.inverse(blockTarget, q_out)
         self.safe_move_to_position(q_out)
         print("Moving to intercept block")
-        gripper_status = self.exec_gripper_cmd(.01, 50)
+        gripper_status = self.exec_gripper_cmd(.01, 55)
         if gripper_status: print("Closing gripper...")
 
 
