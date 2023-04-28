@@ -27,17 +27,17 @@ if __name__ == "__main__":
     arm = ArmController()
     detector = ObjectDetector()
 
-    # start_position = np.array([-0.01779206, -0.76012354,  0.01978261, -2.34205014, 0.02984053, 1.54119353+pi/2, 0.75344866])
-    # arm.safe_move_to_position(start_position) # on your mark!
+    start_position = np.array([-0.01779206, -0.76012354,  0.01978261, -2.34205014, 0.02984053, 1.54119353+pi/2, 0.75344866])
+    arm.safe_move_to_position(start_position) # on your mark!
 
-    # print("\n****************")
-    # if team == 'blue':
-    #     print("** BLUE TEAM  **")
-    # else:
-    #     print("**  RED TEAM  **")
-    # print("****************")
-    # input("\nWaiting for start... Press ENTER to begin!\n") # get set!
-    # print("Go!\n") # go!
+    print("\n****************")
+    if team == 'blue':
+        print("** BLUE TEAM  **")
+    else:
+        print("**  RED TEAM  **")
+    print("****************")
+    input("\nWaiting for start... Press ENTER to begin!\n") # get set!
+    print("Go!\n") # go!
 
     # STUDENT CODE HERE
 
@@ -64,4 +64,11 @@ if __name__ == "__main__":
         robot.get_static_block()
         robot.stack_static_block()
 
+    if team == 'red':
+        robot.get_dynamic_block()
+        robot.get_dynamic_block()
+        robot.get_dynamic_block()
+        robot.get_dynamic_block()
+        robot.get_dynamic_block()
+        robot.get_dynamic_block()
     # END STUDENT CODE

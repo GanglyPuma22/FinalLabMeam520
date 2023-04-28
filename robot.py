@@ -2,6 +2,7 @@ from core.interfaces import ArmController
 from core.interfaces import ObjectDetector
 from vision import *
 import numpy as np
+import rospy
 from math import sin, pi, cos
 from calculateFK import FK
 from solveIK import IK
@@ -97,7 +98,10 @@ class Robot(ArmController):
         theta = np.arccos(tx[0])
         print('COS', np.cos(theta))
         print(theta)
- 
+
+        if theta > Robot.upper[6] or theta < Robot.lower[6]:
+            return np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
+
         # getting the columns of the target
         target = np.vstack([tx, ty, tz]).T
 
@@ -169,7 +173,7 @@ class Robot(ArmController):
 
         # opening gripper then move down
         #TODO: Change moving down to line trajectory
-        self.open_gripper()
+        self.exec_gripper_cmd(.1, 50)
         q_down, success, _ = self.ik.inverse(target, seed)
         if success:
             self.safe_move_to_position(q_down)
@@ -215,7 +219,7 @@ class Robot(ArmController):
         else: print('Cannot find path to stack...')
 
         # dropping the block and moving out of the way
-        success = self.open_gripper()
+        success = self.exec_gripper_cmd(.1, 50)
         if success: print("Dropping block...")
         self.num_blocks_stacked += 1
         #TODO: Replace move up with line trajectory
@@ -226,11 +230,14 @@ class Robot(ArmController):
         dynamic_seed = [ 0.75395863,  0.65412359,  0.69980793, -1.9420197,   1.78589341,  2.27965587, 1.19368807]
         #dynamic_seed_side= np.array([ 0.86509697, 0.9800777, 0.57962444, -1.3424143, 0.98768188, 1.5608464, 1.77350871])
 
-        ee_Z = 0.22
+        ee_Z = 0.20
         ee_X = 0
-        ee_Y = 0.748
+        ee_Y = 0.72 - 0.1
+        zOrient = 1
         sideTarget = np.array([[0, 0, -1, ee_X], [0, -1, 0, ee_Y], [-1, 0, 0, ee_Z], [0, 0, 0, 1]])
-        targetCameraFront = np.array([[0, 1, 0, ee_X], [0, 0, 1, ee_Y - 0.05], [1, 0, 0, ee_Z], [0, 0, 0, 1]])
+
+        targetCameraFront = np.array([[0, 1, 0, ee_X], [0, 0, zOrient, ee_Y], [1, 0, 0, ee_Z], [0, 0, 0, 1]])
+
         print(targetCameraFront)
 
         #Solve for path that gets us to camera front position
@@ -240,15 +247,81 @@ class Robot(ArmController):
         #if (success):
         print("Moving to start dynamic block task position")
         self.safe_move_to_position(q_out)
-        gripper_status = self.exec_gripper_cmd(.09, 50)
+        detections = self.detector.get_detections()
+
+        q_out, success, _ = self.ik.inverse(np.array([[0, 1, 0, ee_X], [0, 0, zOrient, ee_Y], [1, 0, 0, ee_Z + 0.04], [0, 0, 0, 1]]), dynamic_seed)
+        self.safe_move_to_position(q_out)
+
+        #Closest block to world frame
+        _, T0e = self.fk.forward(q_out)
+        worldToCam = H_w_cam(T0e, self.detector.get_H_ee_camera())
+        poses = []
+        for (block_name, pose) in detections:
+            poses.append(pose)
+        poses = objects_in_world(poses, worldToCam)
+        print(detections)
+        print("Poses:")
+        print(poses)
+        smallestDistance = 1000
+        closestBlock = np.zeros((4,4))
+        for p in poses:
+            currentPose = np.array(p)
+            currentDist = np.linalg.norm(p[:3, 3] - T0e[:3, 3])
+            if currentDist < smallestDistance:
+                smallestDistance = currentDist
+                closestBlock = currentPose
+
+        # closestBlock = np.array(closest_object(poses)[0])
+        print("Closest block: ")
+        print(closestBlock)
+        print("Smallest Distance: ")
+        print(smallestDistance)
+        #blockRadius = np.linalg.norm(closestBlock[:3, 3])
+        #blockRadius = 0.990 - np.linalg.norm(closestBlock[:3, 3])
+        blockRadius = 0.29
+        changeX = - (closestBlock[0, 3] - T0e[0, 3])
+        changeY =  (closestBlock[1, 3] - T0e[1, 3])
+
+        print(np.sqrt(changeX*changeX + changeY * changeY))
+
+        gripper_status = self.exec_gripper_cmd(.1, 50)
         if gripper_status: print("Opening gripper...")
-        blockTarget = np.array([[0, 1, 0, ee_X], [0, 0, 1, 0.75], [1, 0, 0, ee_Z], [0, 0, 0, 1]])
+        #Making block the target
+        #blockTarget = np.array([[0, 1, 0, closestBlock[0, 3]], [0, 0, 1, closestBlock[1, 3]], [1, 0, 0, ee_Z + 0.025], [0, 0, 0, 1]])
+        #Making change the target
+        
+
+        # target = closestBlock
+        # target[:3, :3] = self.orient_to_static2(closestBlock)
+        # # going above target block by some above_height
+        # target[2, 3] += self.above_height
+        angularVel = 1
+        time = 0.6
+        scaler = 0.1
+
+        print("Block radius: " + str(blockRadius))
+        print("Change x: " + str(changeX))
+        print("Change y: " + str(changeY))
+        futureX = changeX + scaler * blockRadius * np.sin(angularVel * time)
+        futureY = changeY + scaler * blockRadius * np.cos(angularVel * time)
+        # futureX = changeX
+        # futureY = changeY
+        print("Future x: " + str(futureX))
+        print("Future y: " + str(futureY))
+        blockTarget = np.array([[0, 1, 0, ee_X + futureX], [0, 0, zOrient, ee_Y + futureY], [1, 0, 0, ee_Z + 0.01], [0, 0, 0, 1]])
+
+
+        # blockTarget = target
+        print(blockTarget)
+        tStart = rospy.Time.now()
         q_out, success, _ = self.ik.inverse(blockTarget, q_out)
+        tEnd =  rospy.Time.now()
+        print("Time: " + str(tEnd - tStart))
         self.safe_move_to_position(q_out)
         print("Moving to intercept block")
         gripper_status = self.exec_gripper_cmd(.01, 55)
         if gripper_status: print("Closing gripper...")
-
+        self.stack_static_block()
 
 
 
